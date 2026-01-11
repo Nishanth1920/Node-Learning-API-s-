@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const bcrypt = require('bcryptjs');
 
 class User {
   static get tableName() {
@@ -6,10 +7,19 @@ class User {
   }
 
   static async findAll() {
-    return db(this.tableName).select('*').orderBy('created_at', 'desc');
+    return db(this.tableName)
+      .select('id', 'name', 'email', 'age', 'created_at', 'updated_at')
+      .orderBy('created_at', 'desc');
   }
 
   static async findById(id) {
+    return db(this.tableName)
+      .select('id', 'name', 'email', 'age', 'created_at', 'updated_at')
+      .where({ id })
+      .first();
+  }
+
+  static async findByIdWithPassword(id) {
     return db(this.tableName).where({ id }).first();
   }
 
@@ -18,22 +28,39 @@ class User {
   }
 
   static async create(userData) {
-    const [id] = await db(this.tableName).insert(userData);
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    
+    const [id] = await db(this.tableName).insert({
+      ...userData,
+      password: hashedPassword
+    });
+    
     return this.findById(id);
   }
 
   static async update(id, userData) {
+    const updateData = { ...userData };
+    
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
+    
     await db(this.tableName)
       .where({ id })
       .update({
-        ...userData,
+        ...updateData,
         updated_at: db.fn.now()
       });
+    
     return this.findById(id);
   }
 
   static async delete(id) {
     return db(this.tableName).where({ id }).del();
+  }
+
+  static async comparePassword(plainPassword, hashedPassword) {
+    return bcrypt.compare(plainPassword, hashedPassword);
   }
 
   static async count() {

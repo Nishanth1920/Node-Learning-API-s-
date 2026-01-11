@@ -1,4 +1,6 @@
 const userService = require('../services/userService');
+const authService = require('../services/authService');
+
 
 class UserController {
   async getAllUsers(req, res, next) {
@@ -29,15 +31,16 @@ class UserController {
     }
   }
 
-  async createUser(req, res, next) {
+    async createUser(req, res, next) {
     try {
-      const userData = req.validatedData;
-      const user = await userService.createUser(userData);
-      
+      const result = await authService.register(req.validatedData);
+
       res.status(201).json({
         success: true,
         message: 'User created successfully',
-        data: user
+        data: result.user,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken
       });
     } catch (error) {
       next(error);
